@@ -240,6 +240,8 @@ int bam12auxmerge(::libmaus::util::ArgInfo const & arginfo)
 	// helpers for zztoname	
  	libmaus::bambam::BamAuxFilterVector zzbafv;
  	zzbafv.set('z','z');
+	
+	uint64_t old_rank = 0;
 
 	// loop over aligned BAM file
 	while ( bamdec.readAlignment() )
@@ -266,6 +268,19 @@ int bam12auxmerge(::libmaus::util::ArgInfo const & arginfo)
 			algn.serialise(writer->getStream());
 			continue;
 		}
+		
+
+		if ( sanity )
+		{
+			if ( old_rank > rank ) // out of order
+			{
+			    	libmaus::exception::LibMausException se;
+			    	se.getStream() << "Sanity check failed on ranking, rank " << rank << " of " << name << " is lower than last rank of " << old_rank << std::endl;
+				se.finish();
+				throw se;
+			}
+		}
+		
 		
 		// loop over unaligned BAM file
 		while ( curid != static_cast<int64_t>(rank) )
@@ -300,8 +315,8 @@ int bam12auxmerge(::libmaus::util::ArgInfo const & arginfo)
 			u1++; // put on the first letter of readname
 			
 			if ( verbose > 1 )
-    	    	    	    	std::cerr << "Sanity: comparing " << name << " and " << prename << std::endl;			    
-			
+    	    	    	    	std::cerr << "Sanity: comparing " << name << " and " << prename << std::endl;
+				
 			if ( !is_suffix(prename, u1) ) // names do not match
 			{
 			    	libmaus::exception::LibMausException se;
@@ -327,9 +342,10 @@ int bam12auxmerge(::libmaus::util::ArgInfo const & arginfo)
 			if ( verbose > 1 )
 			    std::cerr << "Sanity check on flags: " << std::endl
 				    	       << "Aligned " << name << " paired " << algn.isPaired() << " first " << algn.isRead1() << " last " << algn.isRead2() << std::endl
-			    	    	       << "Unaligned " << prename << " paired " << prealgn.isPaired() << " first " << prealgn.isRead1() << " last " << prealgn.isRead2() << std::endl;	
+			    	    	       << "Unaligned " << prename << " paired " << prealgn.isPaired() << " first " << prealgn.isRead1() << " last " << prealgn.isRead2() << std::endl
+					       << "This is rank " << rank << ", previous rank was " << old_rank << std::endl;	
 			
-			
+    	    	    	old_rank = rank;
 		}
 		
 		std::sort(auxpre.begin(),auxpre.begin()+pretagnum);
